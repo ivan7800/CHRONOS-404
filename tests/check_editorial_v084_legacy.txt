@@ -1,0 +1,16 @@
+from pathlib import Path
+import subprocess, json
+root=Path(__file__).resolve().parents[1]
+script='global.window={};require(process.argv[1]);require(process.argv[2]);console.log(JSON.stringify({data:window.CHRONOS_DATA,ed:window.CHRONOS_EDITORIAL}));'
+p=subprocess.run(['node','-e',script,str(root/'data.js'),str(root/'editorial-data.js')],capture_output=True,text=True)
+assert p.returncode==0,p.stderr
+obj=json.loads(p.stdout); items=obj['data'];ed=obj['ed']
+assert len(items)==len(ed)==30
+assert {x['id'] for x in items}==set(ed)
+assert len([v for v in ed.values() if v.get('verifiedSource')])==6
+assert len([v for v in ed.values() if not v.get('verifiedSource')])==24
+for i in ('partenon','apolo11','coliseo','carlomagno','constantinopla1453','bagdad'):
+ assert ed[i].get('verificationScope') and ed[i]['verifiedSource'].startswith('https://')
+ assert 'pendiente' not in ed[i]['status'].lower()
+assert 'CONSULTAR DOCUMENTO CONTRASTADO' in (root/'app.js').read_text()
+print('PASS: 30 registros, 6 contrastes limitados, 24 pendientes, enlaces y estado coherentes')
